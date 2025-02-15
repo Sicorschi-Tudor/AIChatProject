@@ -1,9 +1,15 @@
 "use client";
 
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/ui/navbar";
 import HomePage from "./pages";
 import PaymentsPage from "./pages/payments";
+import { Routes, Route } from "react-router-dom";
+
+const Router = dynamic(
+  () => import("react-router-dom").then((mod) => mod.BrowserRouter),
+  { ssr: false }
+);
 
 function Home() {
   return (
