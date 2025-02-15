@@ -3,24 +3,23 @@ import { z } from "zod";
 
 export type Payment = {
     id: string;
-    amount: number;
-    status: "pending" | "processing" | "success" | "failed";
     name: string;
-    mobile: number;
+    mobile: string;
+    amount: string;
+    status: "pending" | "processing" | "success" | "failed";
+
 };
 
 export interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
-    data: TData[];
+    data?: TData[];
 }
 
 export const formSchema = z.object({
-    id: z.string(),
-    amount: z.string().nonempty("Amount is required"),
+    id: z.string().optional(),
     name: z.string().nonempty("Name is required"),
-    mobile: z
-        .string()
-        .regex(/^0\d{8}$/, "Mobile (MD) must be exactly 9 digits and start with 0"),
+    mobile: z.string().nonempty("Mobile is required"),
+    amount: z.string().nonempty("Amount is required"),
     status: z.enum(["pending", "processing", "success", "failed"]),
 });
 

@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,33 +12,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { formSchema, FormValues, UserFormProps } from "./types";
 import { generateId } from "./utils";
 
-export default function PaymentForm({ payment }: UserFormProps) {
+export default function PaymentForm({
+  payment,
+  onSubmitSuccess,
+}: UserFormProps & { onSubmitSuccess: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
+    control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
 
   async function onSubmit(data: FormValues) {
+    setIsLoading(true);
     const payload = { ...data, id: payment?.id || generateId() };
 
-    if (payment) {
-      await fetch(`/api/users/${payment.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await fetch("/api/users", {
+    try {
+      const response = await fetch("http://localhost:3001/payment/create", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit data");
+      }
+
+      console.log("Data submitted successfully!");
+      alert("Data has been successfully recorded!");
+      reset();
+
+      onSubmitSuccess();
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -57,23 +77,37 @@ export default function PaymentForm({ payment }: UserFormProps) {
           <p className="text-red-500">{errors.amount.message}</p>
         )}
 
-        <Select {...register("status")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="processing">Processing</SelectItem>
-            <SelectItem value="success">Success</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-          </SelectContent>
-        </Select>
+        <Controller
+          control={control}
+          name="status"
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.status && (
           <p className="text-red-500">{errors.status.message}</p>
         )}
 
-        <Button type="submit">Add</Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Loading..." : "Add"}
+        </Button>
       </form>
+
+      {isLoading && (
+        <div className="absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-gray-500 opacity-50 z-50">
+          <div className="text-white text-xl">Loading...</div>
+        </div>
+      )}
     </div>
   );
 }

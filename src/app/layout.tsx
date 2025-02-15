@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import QueryProvider from "./payments/QueryProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={"min-h-screen bg-background font-sans antialiased"}>
-        {children}
+        <QueryProvider children={children} />
       </body>
     </html>
   );
