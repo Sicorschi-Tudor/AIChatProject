@@ -35,13 +35,16 @@ export default function PaymentForm({
     const payload = { ...data, id: payment?.id || generateId() };
 
     try {
-      const response = await fetch("http://localhost:3001/payment/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://aichat-project-backend.onrender.com/payment/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to submit data");
