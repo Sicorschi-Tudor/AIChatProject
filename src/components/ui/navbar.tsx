@@ -8,15 +8,7 @@ export default function Navbar() {
       <ul className="flex justify-around">
         <li>
           <Link to="/" className="text-white hover:text-gray-300 transition">
-            Home
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/payments"
-            className="text-white hover:text-gray-300 transition"
-          >
-            Payments
+            Esthetiquebasilix Admin Page
           </Link>
         </li>
       </ul>

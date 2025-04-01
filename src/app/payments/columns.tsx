@@ -7,10 +7,6 @@ import { Payment } from "./types";
 
 export const columns: ColumnDef<Payment>[] = [
   {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
     accessorKey: "name",
     header: ({ column }) => {
       return (
@@ -25,22 +21,72 @@ export const columns: ColumnDef<Payment>[] = [
     },
   },
   {
-    accessorKey: "mobile",
-    header: "Mobile",
+    accessorKey: "surname",
+    header: "Surname",
   },
   {
-    accessorKey: "amount",
-    header: () => {
-      return <div className="text-right">Amount</div>;
+    accessorKey: "email",
+    header: "Email",
+  },
+  {
+    accessorKey: "tel",
+    header: "Phone",
+  },
+  {
+    accessorKey: "service",
+    header: "Service",
+  },
+  {
+    accessorKey: "data",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Date
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
     },
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
+    sortingFn: "datetime",
+  },
+  {
+    accessorKey: "time",
+    header: "Time",
+  },
+  {
+    id: "update",
+    header: "Update",
+    cell: ({ row }) => (
+      <Button
+        variant="outline"
+        onClick={() => {
+          const updateEvent = new CustomEvent("updatePayment", {
+            detail: row.original,
+          });
+          window.dispatchEvent(updateEvent);
+        }}
+      >
+        Update
+      </Button>
+    ),
+  },
+  {
+    id: "delete",
+    header: "Delete",
+    cell: ({ row }) => (
+      <Button
+        variant="destructive"
+        onClick={() => {
+          const deleteEvent = new CustomEvent("deletePayment", {
+            detail: row.original,
+          });
+          window.dispatchEvent(deleteEvent);
+        }}
+      >
+        Delete
+      </Button>
+    ),
   },
 ];

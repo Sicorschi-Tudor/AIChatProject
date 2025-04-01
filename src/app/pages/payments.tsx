@@ -21,8 +21,8 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <PaymentForm onSubmitSuccess={refetch} />
+    <div className="container mx-auto py-5 px-4">
+      <PaymentForm data={data} />
       <DataTable columns={columns} data={data} />
     </div>
   );

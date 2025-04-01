@@ -1,13 +1,16 @@
 import { ColumnDef } from "@tanstack/react-table";
+import { ObjectId } from "mongoose";
 import { z } from "zod";
 
 export type Payment = {
-    id: string;
+    _id: ObjectId
     name: string;
-    mobile: string;
-    amount: string;
-    status: "pending" | "processing" | "success" | "failed";
-
+    surname: string;
+    tel: string;
+    email: string;
+    service: string;
+    data: string;
+    time: string;
 };
 
 export interface DataTableProps<TData, TValue> {
