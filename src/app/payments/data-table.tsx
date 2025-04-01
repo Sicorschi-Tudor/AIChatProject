@@ -23,16 +23,24 @@ import {
 import { DataTableProps, Payment } from "./types";
 import { useState, useEffect } from "react";
 import PaymentForm from "./form";
+import axios from "axios";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const globalFilterFn = (row: any, columnId: string, filterValue: string) => {
   const value = row.getValue(columnId);
   return value?.toString().toLowerCase().includes(filterValue.toLowerCase());
 };
 
+interface ExtendedDataTableProps<TData, TValue>
+  extends DataTableProps<TData, TValue> {
+  onDataChange?: () => void;
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data = [],
-}: DataTableProps<TData, TValue>) {
+  onDataChange,
+}: ExtendedDataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pageIndex, setPageIndex] = useState(0);
@@ -41,10 +49,9 @@ export function DataTable<TData, TValue>({
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [tableData, setTableData] = useState<TData[]>(data);
 
   const table = useReactTable({
-    data: tableData,
+    data,
     columns,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -96,31 +103,31 @@ export function DataTable<TData, TValue>({
     };
   }, []);
 
-  const handleUpdateSubmit = (updatedData: Payment) => {
-    setTableData(
-      (prev) =>
-        prev.map((item) =>
-          (item as Payment)._id === updatedData._id ? updatedData : item
-        ) as TData[] // Cast the result to TData[]
-    );
-    setShowUpdateModal(false);
+  const handleUpdateSubmit = async (updatedData: Payment) => {
+    try {
+      await axios.put(
+        `https://esthetiquebasilixbackend.onrender.com/tasks/${updatedData._id}`,
+        updatedData
+      );
+      if (onDataChange) onDataChange();
+      setShowUpdateModal(false);
+    } catch (error) {
+      console.error("Update failed:", error);
+      alert("Failed to update payment");
+    }
   };
 
   const handleDeleteConfirm = async () => {
     if (selectedPayment?._id) {
       try {
-        await fetch(
-          `https://esthetiquebasilixbackend.onrender.com/tasks/${selectedPayment._id}`,
-          {
-            method: "DELETE",
-          }
+        await axios.delete(
+          `https://esthetiquebasilixbackend.onrender.com/tasks/${selectedPayment._id}`
         );
-        setTableData((prev) =>
-          prev.filter((item) => (item as Payment)._id !== selectedPayment._id)
-        );
+        if (onDataChange) onDataChange();
         setShowDeleteModal(false);
       } catch (error) {
         console.error("Delete failed:", error);
+        alert("Failed to delete payment");
       }
     }
   };
@@ -131,7 +138,7 @@ export function DataTable<TData, TValue>({
         <Input
           placeholder="Search ..."
           value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)} // 🔥 Folosim filtrul global
+          onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
       </div>
@@ -227,9 +234,9 @@ export function DataTable<TData, TValue>({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg max-w-2xl w-full">
             <PaymentForm
-              data={tableData as Payment[]}
+              data={data as Payment[]}
               initialData={selectedPayment}
-              onSubmitSuccess={handleUpdateSubmit}
+              onSubmitSuccess={() => handleUpdateSubmit(selectedPayment)}
             />
             <Button onClick={() => setShowUpdateModal(false)} className="mt-4">
               Close

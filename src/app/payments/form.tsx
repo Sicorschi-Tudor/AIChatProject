@@ -52,17 +52,15 @@ type FormData = z.infer<typeof formSchema>;
 interface PaymentFormProps {
   data?: Payment[];
   initialData?: Payment;
-  onSubmitSuccess?: (data: Payment) => void;
+  onSubmitSuccess?: () => void; // Changed to void since we're using refetch
 }
 
 export default function PaymentForm({
-  data,
+  data = [],
   initialData,
   onSubmitSuccess,
 }: PaymentFormProps) {
-  const [reservedDates, setReservedDates] = React.useState<
-    Payment[] | undefined
-  >(data);
+  const [reservedDates, setReservedDates] = React.useState<Payment[]>(data);
 
   const {
     register,
@@ -97,13 +95,11 @@ export default function PaymentForm({
     try {
       let response;
       if (initialData?._id) {
-        // Update existing record
         response = await axios.put(
           `https://esthetiquebasilixbackend.onrender.com/tasks/${initialData._id}`,
           formData
         );
       } else {
-        // Create new record
         response = await axios.post(
           "https://esthetiquebasilixbackend.onrender.com/tasks/save",
           formData
@@ -114,26 +110,29 @@ export default function PaymentForm({
         initialData?._id ? "Mise à jour réussie !" : "Inscription réussie !"
       );
 
+      // Update local reserved dates
       const newReservation = {
         ...response.data,
         _id: initialData?._id || response.data._id,
       };
       setReservedDates((prev) => {
-        if (initialData?._id && prev) {
+        if (initialData?._id) {
           return prev.map((item) =>
             item._id === initialData._id ? newReservation : item
           );
         }
-        return prev ? [...prev, newReservation] : [newReservation];
+        return [...prev, newReservation];
       });
 
+      // Trigger refetch instead of passing data back
       if (onSubmitSuccess) {
-        onSubmitSuccess(newReservation);
+        onSubmitSuccess();
       }
 
       if (!initialData) reset();
     } catch (error) {
       console.error("Error:", error);
+      alert("Une erreur s'est produite lors de l'enregistrement");
     }
   };
 
@@ -276,11 +275,11 @@ export default function PaymentForm({
         >
           <option value="">Heure</option>
           {times.map((time) => {
-            const isReserved = reservedDates?.some(
+            const isReserved = reservedDates.some(
               (reservation) =>
                 reservation.data === selectedDate &&
                 reservation.time === time &&
-                reservation._id !== initialData?._id // Don't count current record as reserved
+                reservation._id !== initialData?._id
             );
             const timeHasPassed = isTimePast(time, selectedDate);
             const isDisabled = isReserved || timeHasPassed;
