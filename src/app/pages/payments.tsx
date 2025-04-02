@@ -25,7 +25,7 @@ export default function PaymentsPage() {
   });
 
   const handleLogin = () => {
-    if (login === "esthetiquebasilix" && password === "esthetiquebasilix1.") {
+    if (login === "esthetiquebasilix" && password === "Esba1103") {
       setIsLoggedIn(true);
     } else {
       alert("nu ati introdus login sau parola corect");
