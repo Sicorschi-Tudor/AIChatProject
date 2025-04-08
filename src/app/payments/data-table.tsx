@@ -24,6 +24,8 @@ import { DataTableProps, Payment } from "./types";
 import { useState, useEffect } from "react";
 import PaymentForm from "./form";
 import axios from "axios";
+import DatePicker from "react-datepicker";
+import { addMonths } from "date-fns";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const globalFilterFn = (row: any, columnId: string, filterValue: string) => {
@@ -33,7 +35,7 @@ const globalFilterFn = (row: any, columnId: string, filterValue: string) => {
 
 interface ExtendedDataTableProps<TData, TValue>
   extends DataTableProps<TData, TValue> {
-  onDataChange?: () => void;
+  onDataChange: () => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -49,6 +51,7 @@ export function DataTable<TData, TValue>({
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const table = useReactTable({
     data,
@@ -62,7 +65,15 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     state: {
       sorting,
-      columnFilters,
+      columnFilters: selectedDate
+        ? [
+            ...columnFilters,
+            {
+              id: "data",
+              value: selectedDate,
+            },
+          ]
+        : columnFilters,
       globalFilter,
       pagination: { pageIndex, pageSize },
     },
@@ -75,6 +86,15 @@ export function DataTable<TData, TValue>({
       setPageSize(newState.pageSize);
     },
     onGlobalFilterChange: setGlobalFilter,
+    filterFns: {
+      dateFilter: (row, columnId, filterValue) => {
+        const rowDate = new Date(row.getValue(columnId));
+        const filterDate = new Date(filterValue);
+        rowDate.setHours(0, 0, 0, 0);
+        filterDate.setHours(0, 0, 0, 0);
+        return rowDate.getTime() === filterDate.getTime();
+      },
+    },
   });
 
   useEffect(() => {
@@ -109,8 +129,8 @@ export function DataTable<TData, TValue>({
         `https://esthetiquebasilixbackend.onrender.com/tasks/${updatedData._id}`,
         updatedData
       );
-      if (onDataChange) onDataChange();
       setShowUpdateModal(false);
+      onDataChange();
     } catch (error) {
       console.error("Update failed:", error);
       alert("Failed to update payment");
@@ -132,6 +152,21 @@ export function DataTable<TData, TValue>({
     }
   };
 
+  const isWeekday = (date: Date) => {
+    const day = date.getDay();
+    return day !== 0;
+  };
+
+  const dataToString = (data: Date | null | string): string => {
+    if (!data) return "";
+    const date = typeof data === "string" ? new Date(data) : data;
+    if (isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <div>
       <div className="flex items-center py-4">
@@ -139,10 +174,22 @@ export function DataTable<TData, TValue>({
           placeholder="Search ..."
           value={globalFilter}
           onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm"
+          className="max-w-full"
         />
       </div>
-
+      <div className="flex items-center pb-4 gap-2">
+        <DatePicker
+          selected={selectedDate ? new Date(selectedDate) : null}
+          onChange={(date: Date | null) => setSelectedDate(dataToString(date))}
+          filterDate={isWeekday}
+          minDate={new Date()}
+          maxDate={addMonths(new Date(), 2)}
+          className="form-control border rounded-md !w-full h-10 !m-0"
+          placeholderText="Select Date"
+          dateFormat="yyyy-MM-dd"
+        />
+        <Button onClick={() => setSelectedDate(null)}>Toutes</Button>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -236,7 +283,7 @@ export function DataTable<TData, TValue>({
             <PaymentForm
               data={data as Payment[]}
               initialData={selectedPayment}
-              onSubmitSuccess={() => handleUpdateSubmit(selectedPayment)}
+              onSubmitSuccess={() => handleUpdateSubmit} // Pass the function directly
             />
             <Button onClick={() => setShowUpdateModal(false)} className="mt-4">
               Close
