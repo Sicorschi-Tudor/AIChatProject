@@ -129,6 +129,22 @@ export function DataTable<TData, TValue>({
         `https://esthetiquebasilixbackend.onrender.com/tasks/${updatedData._id}`,
         updatedData
       );
+
+      await axios.get(
+        "https://esthetiquebasilixbackend.onrender.com/sentemail",
+        {
+          params: {
+            data: updatedData.data,
+            email: updatedData.email,
+            name: updatedData.name,
+            service: updatedData.service,
+            surname: updatedData.surname,
+            tel: updatedData.tel,
+            time: updatedData.time,
+          },
+        }
+      );
+
       setShowUpdateModal(false);
       onDataChange();
     } catch (error) {
@@ -143,6 +159,22 @@ export function DataTable<TData, TValue>({
         await axios.delete(
           `https://esthetiquebasilixbackend.onrender.com/tasks/${selectedPayment._id}`
         );
+
+        await axios.get(
+          "https://esthetiquebasilixbackend.onrender.com/sentemailDelete",
+          {
+            params: {
+              data: selectedPayment.data,
+              email: selectedPayment.email,
+              name: selectedPayment.name,
+              service: selectedPayment.service,
+              surname: selectedPayment.surname,
+              tel: selectedPayment.tel,
+              time: selectedPayment.time,
+            },
+          }
+        );
+
         if (onDataChange) onDataChange();
         setShowDeleteModal(false);
       } catch (error) {

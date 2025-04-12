@@ -99,10 +99,38 @@ export default function PaymentForm({
           `https://esthetiquebasilixbackend.onrender.com/tasks/${initialData._id}`,
           formData
         );
+        await axios.get(
+          "https://esthetiquebasilixbackend.onrender.com/sentemail",
+          {
+            params: {
+              data: formData.data,
+              email: formData.email,
+              name: formData.name,
+              service: formData.service,
+              surname: formData.surname,
+              tel: formData.tel,
+              time: formData.time,
+            },
+          }
+        );
       } else {
         response = await axios.post(
           "https://esthetiquebasilixbackend.onrender.com/tasks/save",
           formData
+        );
+        await axios.get(
+          "https://esthetiquebasilixbackend.onrender.com/sentemail",
+          {
+            params: {
+              data: formData.data,
+              email: formData.email,
+              name: formData.name,
+              service: formData.service,
+              surname: formData.surname,
+              tel: formData.tel,
+              time: formData.time,
+            },
+          }
         );
       }
 
