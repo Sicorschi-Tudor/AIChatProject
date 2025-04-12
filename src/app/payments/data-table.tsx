@@ -175,8 +175,9 @@ export function DataTable<TData, TValue>({
           }
         );
 
-        if (onDataChange) onDataChange();
         setShowDeleteModal(false);
+
+        if (onDataChange) onDataChange();
       } catch (error) {
         console.error("Delete failed:", error);
         alert("Failed to delete payment");
