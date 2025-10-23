@@ -1,11 +1,23 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getData } from "../api/payments_list";
 import { columns } from "../payments/columns";
 import { DataTable } from "../payments/data-table";
 import PaymentForm from "../payments/form";
+import { Payment } from "../payments/types";
+import { normalizeDateString } from "@/lib/dateUtils";
+
+/**
+ * Normalizează un payment - convertește data în format nou
+ */
+const normalizePayment = (payment: Payment): Payment => {
+  return {
+    ...payment,
+    data: normalizeDateString(payment.data)
+  };
+};
 
 export default function PaymentsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,6 +35,11 @@ export default function PaymentsPage() {
     queryFn: () => getData(),
     enabled: isLoggedIn,
   });
+
+  // Normalizează toate datele primite din backend
+  const normalizedData = useMemo(() => {
+    return (data as Payment[]).map(normalizePayment);
+  }, [data]);
 
   const handleLogin = () => {
     if (login === "esthetiquebasilix" && password === "Esba1103") {
@@ -74,8 +91,8 @@ export default function PaymentsPage() {
 
   return (
     <div className="container mx-auto py-5 px-4">
-      <PaymentForm data={data} onSubmitSuccess={() => refetch()} />
-      <DataTable columns={columns} data={data} onDataChange={() => refetch()} />
+      <PaymentForm data={normalizedData} onSubmitSuccess={() => refetch()} />
+      <DataTable columns={columns} data={normalizedData} onDataChange={() => refetch()} />
     </div>
   );
 }

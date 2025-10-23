@@ -1,4 +1,5 @@
 import { Payment } from "../payments/types";
+import { parseDateFromString, formatDateToOldFormat } from "@/lib/dateUtils";
 
 export async function getData(): Promise<Payment[]> {
   const response = await fetch(
@@ -11,11 +12,16 @@ export async function getData(): Promise<Payment[]> {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  // Formatarea datei în "YYYY-MM-DD"
-  const formatDate = (date: Date): string => date.toISOString().split("T")[0];
-
-  const yesterdayStr = formatDate(yesterday);
+  // Formatarea datei în "YYYY-MM-DD" pentru comparație
+  const yesterdayStr = formatDateToOldFormat(yesterday);
 
   // Filtrare: doar înregistrările cu data >= ieri
-  return data.filter((payment) => payment.data >= yesterdayStr);
+  // Convertește toate datele la format vechi pentru comparație
+  return data.filter((payment) => {
+    const paymentDate = parseDateFromString(payment.data);
+    if (!paymentDate) return false;
+    
+    const paymentDateStr = formatDateToOldFormat(paymentDate);
+    return paymentDateStr >= yesterdayStr;
+  });
 }

@@ -18,7 +18,9 @@ export interface DataTableProps<TData, TValue> {
     data?: TData[];
 }
 
-export const formSchema = z.object({
+// This formSchema is not used in the current implementation
+// The actual form schema is defined in form.tsx
+export const legacyFormSchema = z.object({
     id: z.string().optional(),
     name: z.string().nonempty("Name is required"),
     mobile: z.string().nonempty("Mobile is required"),
@@ -26,7 +28,7 @@ export const formSchema = z.object({
     status: z.enum(["pending", "processing", "success", "failed"]),
 });
 
-export type FormValues = z.infer<typeof formSchema>;
+export type LegacyFormValues = z.infer<typeof legacyFormSchema>;
 
 export type UserFormProps = {
     onSuccess?: () => void;
