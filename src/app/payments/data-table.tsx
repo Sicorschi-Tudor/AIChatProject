@@ -112,34 +112,9 @@ export function DataTable<TData, TValue>({
   }, []);
 
   // --- Handlere ---
-  const handleUpdateSubmit = async (updatedData: Payment) => {
-    try {
-      await axios.put(
-        `https://esthetiquebasilixbackend.onrender.com/tasks/${updatedData._id}`,
-        { ...updatedData, data: formatDateToOldFormat(updatedData.data) }
-      );
-
-      await axios.get(
-        "https://esthetiquebasilixbackend.onrender.com/sentemail",
-        {
-          params: {
-            data: formatDateToOldFormat(updatedData.data),
-            email: updatedData.email,
-            name: updatedData.name,
-            service: updatedData.service,
-            surname: updatedData.surname,
-            tel: updatedData.tel,
-            time: updatedData.time,
-          },
-        }
-      );
-
-      setShowUpdateModal(false);
-      onDataChange();
-    } catch (error) {
-      console.error("Update failed:", error);
-      alert("Failed to update payment");
-    }
+  const handleUpdateSuccess = () => {
+    setShowUpdateModal(false);
+    onDataChange();
   };
 
   const handleDeleteConfirm = async () => {
@@ -260,7 +235,7 @@ export function DataTable<TData, TValue>({
             <PaymentForm
               data={data as Payment[]}
               initialData={selectedPayment}
-              onSubmitSuccess={() => handleUpdateSubmit(selectedPayment)}
+              onSubmitSuccess={handleUpdateSuccess}
             />
             <Button onClick={() => setShowUpdateModal(false)} className="mt-4">Close</Button>
           </div>
