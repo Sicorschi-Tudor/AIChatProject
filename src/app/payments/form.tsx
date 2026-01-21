@@ -12,6 +12,7 @@ import * as z from "zod";
 import { parseDateFromString, formatDateToNewFormat, formatDateToOldFormat } from "@/lib/dateUtils";
 
 const services = [
+  "Lifting HIFU",
   "Peeling acide",
   "ESSENTIEL - Soin du Visage",
   "GOLD - Soin du Visage par Hydrafacial Diamant",
@@ -25,6 +26,7 @@ const services = [
   "Épilation à la cire",
   "Élimination au laser des varices fines et de la cupérose",
   "Massage thérapeutique",
+  "Raffermissement Corporel par HIFU",
 ];
 
 const times = ["10h00", "11h00", "12h00", "13h00", "14h00", "15h00", "16h00", "17h00", "18h00"];
