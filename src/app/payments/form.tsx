@@ -13,6 +13,7 @@ import { parseDateFromString, formatDateToNewFormat, formatDateToOldFormat } fro
 
 const services = [
   "Lifting HIFU",
+  "RADIANCE - Traitement à l'ADN de saumon",
   "Peeling acide",
   "ESSENTIEL - Soin du Visage",
   "GOLD - Soin du Visage par Hydrafacial Diamant",
@@ -21,11 +22,13 @@ const services = [
   "Mésothérapie",
   "Peeling Laser",
   "Dépigmentation des sourcils et tatouages avec Pico-Laser",
-  "Dépigmentation des taches",
+  "Dépigmentation des taches avec Pico-Laser",
   "Épilation définitive",
   "Épilation à la cire",
   "Élimination au laser des varices fines et de la cupérose",
   "Massage thérapeutique",
+  "Cryothérapie",
+  "Remodelage Corporel",
   "Raffermissement Corporel par HIFU",
 ];
 
