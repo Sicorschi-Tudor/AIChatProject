@@ -117,6 +117,15 @@ export default function PaymentForm({
   const selectedDate = watch("data");
   const selectedService = watch("service");
 
+  const BLOCKED_FROM = new Date(2026, 4, 20); // 20 mai 2026
+
+  const isWednesdayBlocked = (dateStr: string): boolean => {
+    const d = parseDateFromString(dateStr);
+    if (!d) return false;
+    d.setHours(0, 0, 0, 0);
+    return d.getDay() === 3 && d >= BLOCKED_FROM;
+  };
+
   // ---------------- Submit ----------------
   const onSubmit = async (formData: FormData) => {
     try {
@@ -221,10 +230,11 @@ export default function PaymentForm({
                 reservation._id !== initialData?._id
             );
             const timeHasPassed = isTimePast(time, selectedDate);
+            const blockedWednesday = isWednesdayBlocked(selectedDate);
             return (
-              <option key={time} value={time} disabled={isReserved || timeHasPassed}>
+              <option key={time} value={time} disabled={isReserved || timeHasPassed || blockedWednesday}>
                 {time}
-                {isReserved ? " (Réservé)" : ""}
+                {isReserved || blockedWednesday ? " (Réservé)" : ""}
                 {timeHasPassed ? " (Passé)" : ""}
               </option>
             );
