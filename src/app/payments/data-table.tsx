@@ -52,6 +52,8 @@ export function DataTable<TData, TValue>({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "success" | "error">("idle");
 
   // --- React Table ---
   const table = useReactTable({
@@ -101,6 +103,7 @@ export function DataTable<TData, TValue>({
     };
     const handleDelete = (e: CustomEvent) => {
       setSelectedPayment(e.detail);
+      setDeleteStatus("idle");
       setShowDeleteModal(true);
     };
     window.addEventListener("updatePayment", handleUpdate as EventListener);
@@ -119,29 +122,35 @@ export function DataTable<TData, TValue>({
 
   const handleDeleteConfirm = async () => {
     if (!selectedPayment?._id) return;
+    setIsDeleting(true);
+    setDeleteStatus("idle");
     try {
       await axios.delete(
         `https://esthetiquebasilixbackend.onrender.com/tasks/${selectedPayment._id}`
       );
+      // Email de anulare trimis după confirmare reușită a ștergerii din DB
       await axios.get(
         "https://esthetiquebasilixbackend.onrender.com/sentemailDelete",
         {
           params: {
-              data: formatDateToOldFormat(selectedPayment.data),
-              email: selectedPayment.email,
-              name: selectedPayment.name,
-              service: selectedPayment.service,
-              surname: selectedPayment.surname,
-              tel: selectedPayment.tel,
-              time: selectedPayment.time,
-},
+            data: formatDateToOldFormat(selectedPayment.data),
+            email: selectedPayment.email,
+            name: selectedPayment.name,
+            service: selectedPayment.service,
+            surname: selectedPayment.surname,
+            tel: selectedPayment.tel,
+            time: selectedPayment.time,
+          },
         }
       );
+      setDeleteStatus("success");
       setShowDeleteModal(false);
       onDataChange();
     } catch (error) {
       console.error("Delete failed:", error);
-      alert("Failed to delete payment");
+      setDeleteStatus("error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -244,12 +253,32 @@ export function DataTable<TData, TValue>({
 
       {/* Delete Modal */}
       {showDeleteModal && selectedPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg">
-            <p>Sigur doriți să ștergeți această înregistrare?</p>
-            <div className="mt-4 flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeleteConfirm}>Delete</Button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <p className="font-medium mb-1">Sigur doriți să ștergeți această înregistrare?</p>
+            <p className="text-sm text-gray-500 mb-4">
+              {selectedPayment.name} {selectedPayment.surname} — {formatDateToNewFormat(selectedPayment.data)} à {selectedPayment.time}
+            </p>
+            {deleteStatus === "error" && (
+              <p className="text-red-600 text-sm mb-3">
+                ✕ Eroare la ștergere. Verificați conexiunea și încercați din nou.
+              </p>
+            )}
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => { setShowDeleteModal(false); setDeleteStatus("idle"); }}
+                disabled={isDeleting}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Suppression..." : "Supprimer"}
+              </Button>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addMonths } from "date-fns";
@@ -10,6 +10,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { parseDateFromString, formatDateToNewFormat, formatDateToOldFormat } from "@/lib/dateUtils";
+
+const API_BASE = "https://esthetiquebasilixbackend.onrender.com";
 
 const services = [
   "Lifting HIFU",
@@ -58,6 +60,8 @@ export default function PaymentForm({
   onSubmitSuccess,
 }: PaymentFormProps) {
   const [reservedDates, setReservedDates] = React.useState<Payment[]>(data);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitStatus, setSubmitStatus] = React.useState<"idle" | "success" | "error-taken" | "error-generic">("idle");
 
   const {
     register,
@@ -79,29 +83,49 @@ export default function PaymentForm({
     },
   });
 
+  // Populează forma când se deschide modal-ul de editare
   useEffect(() => {
-    setReservedDates(data);
     if (initialData) {
       Object.entries(initialData).forEach(([key, value]) => {
         setValue(key as keyof FormData, value as string);
       });
     }
-  }, [data, initialData, setValue]);
+  }, [initialData, setValue]);
 
-  // ---------------- Helper functions ----------------
+  // Fetch rezervări direct din API (nu din props) pentru a fi mereu actualizat
+  const getReservedDates = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/tasks/get`);
+      setReservedDates(res.data);
+    } catch (err) {
+      console.error("Error fetching reserved dates:", err);
+    }
+  }, []);
 
-  // Verifică dacă ziua este lucrătoare
+  useEffect(() => {
+    getReservedDates();
+  }, [getReservedDates]);
+
+  const selectedDate = watch("data");
+  const selectedService = watch("service");
+
+  // Refresh ore disponibile când se schimbă data selectată
+  useEffect(() => {
+    if (selectedDate) {
+      getReservedDates();
+    }
+  }, [selectedDate, getReservedDates]);
+
+  // ---- Helper functions ----
+
   const isWeekday = (date: Date) => date.getDay() !== 0;
 
-  // Verifică dacă ora a trecut
   const isTimePast = (time: string, selectedDateStr: string): boolean => {
     if (!selectedDateStr || !time) return false;
     const [hours] = time.split("h").map(Number);
     if (isNaN(hours)) return false;
-
     const selectedDate = parseDateFromString(selectedDateStr);
     if (!selectedDate) return false;
-
     const now = new Date();
     if (selectedDate > now) return false;
     if (
@@ -114,10 +138,7 @@ export default function PaymentForm({
     return true;
   };
 
-  const selectedDate = watch("data");
-  const selectedService = watch("service");
-
-  const BLOCKED_FROM = new Date(2026, 4, 20); // 20 mai 2026
+  const BLOCKED_FROM = new Date(2026, 5, 1); // 1 iunie 2026 — toate miercurile din iunie+ sunt blocate
 
   const isWednesdayBlocked = (dateStr: string): boolean => {
     const d = parseDateFromString(dateStr);
@@ -126,55 +147,71 @@ export default function PaymentForm({
     return d.getDay() === 3 && d >= BLOCKED_FROM;
   };
 
-  // ---------------- Submit ----------------
+  // ---- Submit ----
   const onSubmit = async (formData: FormData) => {
+    setIsSubmitting(true);
+    setSubmitStatus("idle");
+
     try {
       const payload = {
         ...formData,
-        data: formatDateToOldFormat(formData.data), // trimitem format vechi pentru backend
+        data: formatDateToOldFormat(formData.data),
       };
 
-      let response;
       if (initialData?._id) {
-        response = await axios.put(
-          `https://esthetiquebasilixbackend.onrender.com/tasks/${initialData._id}`,
-          payload
-        );
-        await axios.get(
-          "https://esthetiquebasilixbackend.onrender.com/sentemail",
-          { params: payload }
-        );
+        // ---- EDITARE ----
+        await axios.put(`${API_BASE}/tasks/${initialData._id}`, payload);
+
+        // La update, backend-ul nu trimite email automat — îl trimitem după confirmare reușită
+        await axios.get(`${API_BASE}/sentemail`, { params: payload });
+
+        setSubmitStatus("success");
+        await getReservedDates();
+        if (onSubmitSuccess) onSubmitSuccess();
       } else {
-        response = await axios.post(
-          "https://esthetiquebasilixbackend.onrender.com/tasks/save",
-          payload
-        );
-        await axios.get(
-          "https://esthetiquebasilixbackend.onrender.com/sentemail",
-          { params: payload }
-        );
+        // ---- CREARE ----
+        // Backend trimite automat emailul de confirmare după inserare confirmată în DB
+        await axios.post(`${API_BASE}/tasks/save`, payload);
+
+        setSubmitStatus("success");
+        await getReservedDates();
+        if (onSubmitSuccess) onSubmitSuccess();
+        reset();
       }
-
-      alert(initialData?._id ? "Mise à jour réussie !" : "Inscription réussie !");
-
-      const newReservation = { ...response.data, _id: initialData?._id || response.data._id };
-      setReservedDates((prev) =>
-        initialData?._id
-          ? prev.map((item) => (item._id === initialData._id ? newReservation : item))
-          : [...prev, newReservation]
-      );
-
-      if (onSubmitSuccess) onSubmitSuccess();
-      if (!initialData) reset();
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Une erreur s'est produite lors de l'enregistrement");
+    } catch (error: any) {
+      console.error("Submit error:", error);
+      if (error?.response?.status === 409) {
+        setSubmitStatus("error-taken");
+      } else {
+        setSubmitStatus("error-generic");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <section id="form" className="form">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+      {/* Status messages */}
+      {submitStatus === "success" && (
+        <div style={{ background: "#d4edda", color: "#155724", padding: "10px 14px", borderRadius: "6px", marginBottom: "12px", border: "1px solid #c3e6cb" }}>
+          {initialData?._id
+            ? "✓ Mise à jour réussie ! Un email de confirmation a été envoyé au client."
+            : "✓ Inscription réussie ! Un email de confirmation a été envoyé automatiquement au client."}
+        </div>
+      )}
+      {submitStatus === "error-taken" && (
+        <div style={{ background: "#fff3cd", color: "#856404", padding: "10px 14px", borderRadius: "6px", marginBottom: "12px", border: "1px solid #ffc107" }}>
+          ⚠ Ce créneau horaire est déjà réservé. Veuillez choisir une autre date ou heure.
+        </div>
+      )}
+      {submitStatus === "error-generic" && (
+        <div style={{ background: "#f8d7da", color: "#721c24", padding: "10px 14px", borderRadius: "6px", marginBottom: "12px", border: "1px solid #f5c6cb" }}>
+          ✕ Une erreur s'est produite. Veuillez réessayer.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" onChange={() => setSubmitStatus("idle")}>
         <input {...register("name")} className="form-control" placeholder="Nom" />
         {errors.name && <span className="text-red-500">{errors.name.message}</span>}
 
@@ -193,11 +230,12 @@ export default function PaymentForm({
           onChange={(e) => {
             setValue("service", e.target.value);
             setValue("time", "");
+            setSubmitStatus("idle");
           }}
         >
           <option value="">Sélectionner le service</option>
           {services.map((service) => (
-            <option key={service} value={service} disabled={service === "Massage thérapeutique"}>
+            <option key={service} value={service}>
               {service}
             </option>
           ))}
@@ -212,6 +250,7 @@ export default function PaymentForm({
           onChange={(date) => {
             setValue("data", formatDateToNewFormat(date));
             setValue("time", "");
+            setSubmitStatus("idle");
           }}
           className="form-control"
           placeholderText="Date"
@@ -219,20 +258,28 @@ export default function PaymentForm({
         />
         {errors.data && <span className="text-red-500">{errors.data.message}</span>}
 
-        <select {...register("time")} className="form-control" disabled={!selectedDate || !selectedService}>
+        <select
+          {...register("time")}
+          className="form-control"
+          disabled={!selectedDate || !selectedService}
+          onChange={(e) => {
+            setValue("time", e.target.value);
+            setSubmitStatus("idle");
+          }}
+        >
           <option value="">Heure</option>
           {times.map((time) => {
             const isReserved = reservedDates.some(
               (reservation) =>
-                formatDateToNewFormat(reservation.data) ===
-                  formatDateToNewFormat(selectedDate) &&
+                formatDateToNewFormat(reservation.data) === formatDateToNewFormat(selectedDate) &&
                 reservation.time === time &&
                 reservation._id !== initialData?._id
             );
             const timeHasPassed = isTimePast(time, selectedDate);
             const blockedWednesday = isWednesdayBlocked(selectedDate);
+            const isDisabled = isReserved || timeHasPassed || blockedWednesday;
             return (
-              <option key={time} value={time} disabled={isReserved || timeHasPassed || blockedWednesday}>
+              <option key={time} value={time} disabled={isDisabled}>
                 {time}
                 {isReserved || blockedWednesday ? " (Réservé)" : ""}
                 {timeHasPassed ? " (Passé)" : ""}
@@ -242,7 +289,13 @@ export default function PaymentForm({
         </select>
         {errors.time && <span className="text-red-500">{errors.time.message}</span>}
 
-        <Button type="submit">{initialData?._id ? "Update" : "Prendre rendez-vous"}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting
+            ? "En cours..."
+            : initialData?._id
+            ? "Mettre à jour"
+            : "Prendre rendez-vous"}
+        </Button>
       </form>
     </section>
   );
