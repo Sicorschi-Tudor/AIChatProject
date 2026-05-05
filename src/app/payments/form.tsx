@@ -178,9 +178,10 @@ export default function PaymentForm({
         if (onSubmitSuccess) onSubmitSuccess();
         reset();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submit error:", error);
-      if (error?.response?.status === 409) {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 409) {
         setSubmitStatus("error-taken");
       } else {
         setSubmitStatus("error-generic");
@@ -207,7 +208,7 @@ export default function PaymentForm({
       )}
       {submitStatus === "error-generic" && (
         <div style={{ background: "#f8d7da", color: "#721c24", padding: "10px 14px", borderRadius: "6px", marginBottom: "12px", border: "1px solid #f5c6cb" }}>
-          ✕ Une erreur s'est produite. Veuillez réessayer.
+          ✕ Une erreur s&apos;est produite. Veuillez réessayer.
         </div>
       )}
 
