@@ -1,7 +1,9 @@
 import React, { useEffect, useCallback } from "react";
-import DatePicker from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addMonths } from "date-fns";
+import { fr } from "date-fns/locale";
+registerLocale("fr", fr);
 import "../styles/form.css";
 import axios from "axios";
 import { Payment } from "./types";
@@ -244,10 +246,23 @@ export default function PaymentForm({
         {errors.service && <span className="text-red-500">{errors.service.message}</span>}
 
         <DatePicker
+          locale="fr"
           selected={parseDateFromString(selectedDate)}
           filterDate={isWeekday}
           minDate={new Date()}
           maxDate={addMonths(new Date(), 2)}
+          excludeDates={[
+            // Concediu 21-30 juillet 2026
+            new Date("2026-07-21"), new Date("2026-07-22"), new Date("2026-07-23"),
+            new Date("2026-07-24"), new Date("2026-07-25"), new Date("2026-07-26"),
+            new Date("2026-07-27"), new Date("2026-07-28"), new Date("2026-07-29"),
+            new Date("2026-07-30"),
+            // Concediu 15-25 août 2026
+            new Date("2026-08-15"), new Date("2026-08-16"), new Date("2026-08-17"),
+            new Date("2026-08-18"), new Date("2026-08-19"), new Date("2026-08-20"),
+            new Date("2026-08-21"), new Date("2026-08-22"), new Date("2026-08-23"),
+            new Date("2026-08-24"), new Date("2026-08-25"),
+          ]}
           onChange={(date) => {
             setValue("data", formatDateToNewFormat(date));
             setValue("time", "");
