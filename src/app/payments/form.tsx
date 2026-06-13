@@ -64,6 +64,8 @@ export default function PaymentForm({
   const [reservedDates, setReservedDates] = React.useState<Payment[]>(data);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitStatus, setSubmitStatus] = React.useState<"idle" | "success" | "error-taken" | "error-generic">("idle");
+  // Starea backend-ului: "unknown" = se verifică, "loading" = nu răspunde (cold-start Render), "ready" = ok.
+  const [serverStatus, setServerStatus] = React.useState<"unknown" | "loading" | "ready">("unknown");
 
   const {
     register,
@@ -97,10 +99,15 @@ export default function PaymentForm({
   // Fetch rezervări direct din API (nu din props) pentru a fi mereu actualizat
   const getReservedDates = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/tasks/get`);
+      const res = await axios.get(`${API_BASE}/tasks/get`, { timeout: 12000 });
       setReservedDates(res.data);
+      setServerStatus("ready");
+      return true;
     } catch (err) {
       console.error("Error fetching reserved dates:", err);
+      // Backend probabil în cold-start pe Render — marcăm "loading" și reîncercăm până pornește.
+      setServerStatus("loading");
+      return false;
     }
   }, []);
 
@@ -117,6 +124,16 @@ export default function PaymentForm({
       getReservedDates();
     }
   }, [selectedDate, getReservedDates]);
+
+  // Cold-start Render: reîncearcă la fiecare 4s până pornește backend-ul.
+  // La primul GET reușit, serverStatus devine "ready" și intervalul se oprește.
+  useEffect(() => {
+    if (serverStatus !== "loading") return;
+    const interval = setInterval(() => {
+      getReservedDates();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [serverStatus, getReservedDates]);
 
   // ---- Helper functions ----
 
@@ -147,6 +164,16 @@ export default function PaymentForm({
     if (!d) return false;
     d.setHours(0, 0, 0, 0);
     return d.getDay() === 3 && d >= BLOCKED_FROM;
+  };
+
+  // Ca pe site: de la 6 ianuarie 2026, orele 10h00 și 11h00 nu mai sunt disponibile.
+  const isOnOrAfterJanuary6_2026 = (dateStr: string): boolean => {
+    const d = parseDateFromString(dateStr);
+    if (!d) return false;
+    const jan6 = new Date(2026, 0, 6);
+    d.setHours(0, 0, 0, 0);
+    jan6.setHours(0, 0, 0, 0);
+    return d.getTime() >= jan6.getTime();
   };
 
   // ---- Submit ----
@@ -245,6 +272,12 @@ export default function PaymentForm({
         </select>
         {errors.service && <span className="text-red-500">{errors.service.message}</span>}
 
+        {selectedService && serverStatus !== "ready" && (
+          <div style={{ color: "#8a6d3b", fontSize: "14px", margin: "4px 0 12px", padding: "10px 12px", background: "#fcf8e3", borderRadius: "6px", border: "1px solid #faebcc", lineHeight: 1.45 }}>
+            ⏳ Nous nous excusons, le serveur est en cours de démarrage. Le chargement des disponibilités peut prendre jusqu&apos;à une minute. Merci de patienter, les créneaux s&apos;afficheront automatiquement…
+          </div>
+        )}
+
         <DatePicker
           locale="fr"
           selected={parseDateFromString(selectedDate)}
@@ -269,39 +302,55 @@ export default function PaymentForm({
             setSubmitStatus("idle");
           }}
           className="form-control"
-          placeholderText="Date"
+          placeholderText={
+            !selectedService
+              ? "Sélectionnez d'abord un service"
+              : serverStatus !== "ready"
+              ? "Chargement… veuillez patienter"
+              : "Date"
+          }
           dateFormat="dd-MM-yyyy"
+          disabled={!selectedService || serverStatus !== "ready"}
         />
         {errors.data && <span className="text-red-500">{errors.data.message}</span>}
 
         <select
           {...register("time")}
           className="form-control"
-          disabled={!selectedDate || !selectedService}
+          disabled={serverStatus !== "ready" || !selectedDate || !selectedService}
           onChange={(e) => {
             setValue("time", e.target.value);
             setSubmitStatus("idle");
           }}
         >
-          <option value="">Heure</option>
-          {times.map((time) => {
-            const isReserved = reservedDates.some(
-              (reservation) =>
-                formatDateToNewFormat(reservation.data) === formatDateToNewFormat(selectedDate) &&
-                reservation.time === time &&
-                reservation._id !== initialData?._id
-            );
-            const timeHasPassed = isTimePast(time, selectedDate);
-            const blockedWednesday = isWednesdayBlocked(selectedDate);
-            const isDisabled = isReserved || timeHasPassed || blockedWednesday;
-            return (
-              <option key={time} value={time} disabled={isDisabled}>
-                {time}
-                {isReserved || blockedWednesday ? " (Réservé)" : ""}
-                {timeHasPassed ? " (Passé)" : ""}
-              </option>
-            );
-          })}
+          <option value="">{selectedService && serverStatus !== "ready" ? "Chargement…" : "Heure"}</option>
+          {times
+            .filter((time) => {
+              // Ca pe site: de la 6 ianuarie 2026 ascundem complet orele 10h00 și 11h00
+              if (isOnOrAfterJanuary6_2026(selectedDate)) {
+                const [hours] = time.split("h").map(Number);
+                return hours >= 12;
+              }
+              return true;
+            })
+            .map((time) => {
+              const isReserved = reservedDates.some(
+                (reservation) =>
+                  formatDateToNewFormat(reservation.data) === formatDateToNewFormat(selectedDate) &&
+                  reservation.time === time &&
+                  reservation._id !== initialData?._id
+              );
+              const timeHasPassed = isTimePast(time, selectedDate);
+              const blockedWednesday = isWednesdayBlocked(selectedDate);
+              const isDisabled = isReserved || timeHasPassed || blockedWednesday;
+              return (
+                <option key={time} value={time} disabled={isDisabled}>
+                  {time}
+                  {isReserved || blockedWednesday ? " (Réservé)" : ""}
+                  {timeHasPassed ? " (Passé)" : ""}
+                </option>
+              );
+            })}
         </select>
         {errors.time && <span className="text-red-500">{errors.time.message}</span>}
 
