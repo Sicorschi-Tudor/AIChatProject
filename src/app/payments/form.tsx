@@ -159,10 +159,17 @@ export default function PaymentForm({
 
   const BLOCKED_FROM = new Date(2026, 5, 1); // 1 iunie 2026 — toate miercurile din iunie+ sunt blocate
 
+  // Miercuri deblocate manual (exceptii de la regula de blocare)
+  const ALLOWED_WEDNESDAYS = [
+    new Date(2026, 7, 5).setHours(0, 0, 0, 0),  
+    new Date(2026, 7, 12).setHours(0, 0, 0, 0), 
+  ];
+
   const isWednesdayBlocked = (dateStr: string): boolean => {
     const d = parseDateFromString(dateStr);
     if (!d) return false;
     d.setHours(0, 0, 0, 0);
+    if (ALLOWED_WEDNESDAYS.includes(d.getTime())) return false;
     return d.getDay() === 3 && d >= BLOCKED_FROM;
   };
 
